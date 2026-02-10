@@ -1,0 +1,50 @@
+# Multi-Agent Infrastructure Dependencies
+
+# Core LangGraph
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# LLM Providers (install based on your needs)
+# OpenAI - GPT-4o, GPT-4o-mini, o1, etc.
+langchain-openai>=0.2.0
+
+# Anthropic - Claude 3.5 Sonnet, Claude 3 Opus, etc.
+langchain-anthropic>=0.2.0
+
+# Google - Gemini 1.5 Flash/Pro
+langchain-google-genai>=2.0.0
+
+# Cohere - Command R, Command R+
+langchain-cohere>=0.3.0
+
+# Groq - Llama 3, Mixtral, Gemma (fast inference)
+langchain-groq>=0.2.0
+
+# Moonshot AI - Kimi k2.5, k1.5 (uses OpenAI-compatible interface)
+# pip install langchain-moonshot  # Optional: native support
+# Or use with OpenAI interface via base_url
+
+# OpenRouter - Access to many models via OpenAI-compatible API
+# No extra package needed - uses langchain-openai with custom base_url
+
+# Ollama - Local models (Llama, Mistral, etc.)
+langchain-ollama>=0.1.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Checkpointing
+langgraph-checkpoint>=2.0.0
+
+# Optional: Persistent storage
+# langgraph-checkpoint-sqlite>=2.0.0
+# langgraph-checkpoint-postgres>=2.0.0
+
+# Utils
+pydantic>=2.0.0
+typing-extensions>=4.9.0
+xxhash>=3.0.0
+
+# Development
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
