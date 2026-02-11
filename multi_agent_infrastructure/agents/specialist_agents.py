@@ -6,6 +6,7 @@ These agents are ready to use in the multi-agent orchestrator.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Callable, Optional, Sequence
 
 from langchain_core.language_models import BaseChatModel
@@ -13,6 +14,9 @@ from langchain_core.tools import BaseTool
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from multi_agent_infrastructure.agents.base_agent import SimpleReactAgent
+from multi_agent_infrastructure.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ResearchAgent(SimpleReactAgent):
@@ -53,6 +57,7 @@ Always cite your sources when possible and be thorough in your research."""
             system_prompt: Custom system prompt (uses default if not provided)
             checkpointer: Optional checkpointer for persistence
         """
+        logger.debug("Initializing ResearchAgent")
         super().__init__(
             name="research",
             description="Specialized agent for research, information gathering, and fact-finding",
@@ -61,6 +66,7 @@ Always cite your sources when possible and be thorough in your research."""
             system_prompt=system_prompt or self.DEFAULT_PROMPT,
             checkpointer=checkpointer,
         )
+        logger.info(f"ResearchAgent initialized with {len(self.tools)} tools")
     
     def get_capabilities(self) -> list[str]:
         """Return agent capabilities."""
@@ -114,6 +120,7 @@ Always provide complete, runnable code examples and explain your approach."""
             system_prompt: Custom system prompt (uses default if not provided)
             checkpointer: Optional checkpointer for persistence
         """
+        logger.debug("Initializing CodeAgent")
         super().__init__(
             name="code",
             description="Specialized agent for coding, debugging, and software development",
@@ -122,6 +129,7 @@ Always provide complete, runnable code examples and explain your approach."""
             system_prompt=system_prompt or self.DEFAULT_PROMPT,
             checkpointer=checkpointer,
         )
+        logger.info(f"CodeAgent initialized with {len(self.tools)} tools")
     
     def get_capabilities(self) -> list[str]:
         """Return agent capabilities."""
@@ -178,6 +186,7 @@ Always base your analysis on available data and clearly distinguish between fact
             system_prompt: Custom system prompt (uses default if not provided)
             checkpointer: Optional checkpointer for persistence
         """
+        logger.debug("Initializing AnalysisAgent")
         super().__init__(
             name="analysis",
             description="Specialized agent for data analysis, evaluation, and comparative assessment",
@@ -186,6 +195,7 @@ Always base your analysis on available data and clearly distinguish between fact
             system_prompt=system_prompt or self.DEFAULT_PROMPT,
             checkpointer=checkpointer,
         )
+        logger.info(f"AnalysisAgent initialized with {len(self.tools)} tools")
     
     def get_capabilities(self) -> list[str]:
         """Return agent capabilities."""
@@ -234,6 +244,7 @@ Be helpful, clear, and thorough in your responses."""
             system_prompt: Custom system prompt (uses default if not provided)
             checkpointer: Optional checkpointer for persistence
         """
+        logger.debug("Initializing GeneralAgent")
         super().__init__(
             name="general",
             description="General-purpose agent for handling any task",
@@ -242,6 +253,7 @@ Be helpful, clear, and thorough in your responses."""
             system_prompt=system_prompt or self.DEFAULT_PROMPT,
             checkpointer=checkpointer,
         )
+        logger.info(f"GeneralAgent initialized with {len(self.tools)} tools")
     
     def get_capabilities(self) -> list[str]:
         """Return agent capabilities."""
@@ -291,6 +303,7 @@ Be imaginative, engaging, and original while meeting the user's requirements."""
             system_prompt: Custom system prompt (uses default if not provided)
             checkpointer: Optional checkpointer for persistence
         """
+        logger.debug("Initializing CreativeAgent")
         super().__init__(
             name="creative",
             description="Specialized agent for creative tasks, writing, and content generation",
@@ -299,6 +312,7 @@ Be imaginative, engaging, and original while meeting the user's requirements."""
             system_prompt=system_prompt or self.DEFAULT_PROMPT,
             checkpointer=checkpointer,
         )
+        logger.info(f"CreativeAgent initialized with {len(self.tools)} tools")
     
     def get_capabilities(self) -> list[str]:
         """Return agent capabilities."""
@@ -350,6 +364,7 @@ Be systematic, thorough, and practical in your planning approach."""
             system_prompt: Custom system prompt (uses default if not provided)
             checkpointer: Optional checkpointer for persistence
         """
+        logger.debug("Initializing PlanningAgent")
         super().__init__(
             name="planning",
             description="Specialized agent for task planning, organization, and strategy development",
@@ -358,6 +373,7 @@ Be systematic, thorough, and practical in your planning approach."""
             system_prompt=system_prompt or self.DEFAULT_PROMPT,
             checkpointer=checkpointer,
         )
+        logger.info(f"PlanningAgent initialized with {len(self.tools)} tools")
     
     def get_capabilities(self) -> list[str]:
         """Return agent capabilities."""

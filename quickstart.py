@@ -57,7 +57,7 @@ def setup_model():
     # Show available providers and their status
     print("\n  Available providers:")
     for provider, info in get_provider_info().items():
-        status = "✓ configured" if info["has_key"] else "✗ not configured"
+        status = "+ configured" if info["has_key"] else "- not configured"
         print(f"    - {provider}: {status}")
     
     try:
@@ -153,7 +153,7 @@ def create_agents(registry: AgentRegistry, model) -> None:
 def run_conversation(orchestrator, session_id: str, user_input: str):
     """
     Run a conversation through the orchestrator.
-    
+
     Args:
         orchestrator: The compiled orchestrator
         session_id: Unique session identifier
@@ -165,33 +165,34 @@ def run_conversation(orchestrator, session_id: str, user_input: str):
         max_iterations=5,
     )
     state["messages"] = [HumanMessage(content=user_input)]
-    
+
     print("\n" + "=" * 70)
     print("Orchestrator is processing...")
     print("=" * 70 + "\n")
-    
+
     try:
-        # Run the orchestrator
-        result = orchestrator.invoke(state)
-        
+        # Run the orchestrator with proper configuration for checkpointing
+        config = {"configurable": {"thread_id": session_id}}
+        result = orchestrator.invoke(state, config=config)
+
         # Display results
         print("\n" + "=" * 70)
         print("RESULTS")
         print("=" * 70)
-        
+
         # Show routing history
         print("\n[Routing History]")
         for i, decision in enumerate(result.get("routing_history", []), 1):
             print(f"  {i}. {decision['target_agent']}")
             print(f"     Reason: {decision['reason']}")
             print(f"     Confidence: {decision['confidence']:.2f}")
-        
+
         # Show final messages
         print("\n[Conversation]")
         for msg in result.get("messages", []):
             msg_type = getattr(msg, 'type', 'unknown')
             content = getattr(msg, 'content', str(msg))
-            
+
             if msg_type == 'human':
                 print(f"\n  You: {content}")
             elif msg_type == 'ai':
@@ -199,11 +200,11 @@ def run_conversation(orchestrator, session_id: str, user_input: str):
                 display_content = content[:500] + "..." if len(content) > 500 else content
                 agent_name = getattr(msg, 'name', 'Agent')
                 print(f"\n  {agent_name}: {display_content}")
-        
+
         print("\n" + "=" * 70)
         print("Session completed!")
         print("=" * 70)
-        
+
     except Exception as e:
         print(f"\nError: {e}")
         import traceback

@@ -36,6 +36,14 @@ from langchain_core.language_models import BaseChatModel
 
 if TYPE_CHECKING:
     from langchain_core.runnables import Runnable
+    from langchain_core.rate_limiters import BaseRateLimiter
+
+# Import rate limiter utilities
+from multi_agent_infrastructure.rate_limiter import (
+    apply_rate_limiter_to_config,
+    create_rate_limiter_from_env,
+    get_provider_rate_limiter,
+)
 
 
 # Provider to environment variable mapping
@@ -304,6 +312,12 @@ class LLMConfig:
     additional_kwargs: dict[str, Any] = field(default_factory=dict)
     """Additional provider-specific kwargs."""
     
+    rate_limiter: Optional[Any] = None
+    """Optional rate limiter for API requests. Highly recommended for Google/Gemini."""
+    
+    auto_rate_limiting: bool = True
+    """Whether to automatically apply provider-specific rate limiting. Default True."""
+    
     def __post_init__(self):
         """Validate and normalize configuration."""
         self.provider = self.provider.lower()
@@ -375,7 +389,7 @@ class LLMConfig:
         return ChatAnthropic(**kwargs)
     
     def _get_google_model(self) -> BaseChatModel:
-        """Create Google (Gemini) model."""
+        """Create Google (Gemini) model with automatic rate limiting."""
         from langchain_google_genai import ChatGoogleGenerativeAI
         
         kwargs: dict[str, Any] = {
@@ -390,6 +404,14 @@ class LLMConfig:
             kwargs["timeout"] = self.timeout
         if self.api_key is not None:
             kwargs["api_key"] = self.api_key
+        
+        # Apply rate limiting (automatic for Google/Gemini)
+        kwargs = apply_rate_limiter_to_config(
+            provider="google",
+            kwargs=kwargs,
+            rate_limiter=self.rate_limiter,
+            auto_apply=self.auto_rate_limiting,
+        )
         
         kwargs.update(self.additional_kwargs)
         return ChatGoogleGenerativeAI(**kwargs)
@@ -518,7 +540,7 @@ class LLMConfig:
         return ChatOpenAI(**kwargs)
     
     def _get_ollama_model(self) -> BaseChatModel:
-        """Create Ollama model."""
+        """Create Ollama model (using modern langchain-ollama partner package)."""
         from langchain_ollama import ChatOllama
         
         kwargs: dict[str, Any] = {
@@ -586,6 +608,8 @@ def get_model(
     model: str | None = None,
     provider: str | None = None,
     temperature: float = 0.7,
+    rate_limiter: Optional[Any] = None,
+    auto_rate_limiting: bool = True,
     **kwargs: Any,
 ) -> BaseChatModel:
     """
@@ -596,11 +620,18 @@ def get_model(
     
     Environment variables are loaded from .env file automatically.
     
+    Priority for determining model/provider:
+    1. Explicit arguments passed to this function
+    2. LLM_MODEL and LLM_PROVIDER environment variables
+    3. Auto-detection from available API keys
+    
     Args:
         model: Model string identifier (e.g., "openai:gpt-4o", "gpt-4o-mini").
                Can also be a known alias like "claude-3-5-sonnet".
         provider: Provider name if not included in model string (e.g., "openai").
         temperature: Sampling temperature (default: 0.7).
+        rate_limiter: Optional rate limiter to use. If None, may auto-apply based on provider.
+        auto_rate_limiting: Whether to auto-apply provider-specific rate limiting (default: True).
         **kwargs: Additional arguments passed to LLMConfig.
         
     Returns:
@@ -635,57 +666,98 @@ def get_model(
             temperature=0.7,
             max_tokens=4096,
         )
+        
+        # With rate limiting (recommended for Google Gemini)
+        from multi_agent_infrastructure.rate_limiter import get_gemini_rate_limiter
+        limiter = get_gemini_rate_limiter(requests_per_second=1.0)
+        model = get_model("google:gemini-1.5-flash", rate_limiter=limiter)
         ```
     """
     # Load environment variables from .env file
     load_dotenv()
     
-    # If no model specified, try to get from environment or use default
-    if model is None:
-        # Check for common environment variables
-        if os.environ.get("OPENAI_API_KEY"):
-            model = "openai:gpt-4o-mini"
-        elif os.environ.get("ANTHROPIC_API_KEY"):
-            model = "anthropic:claude-3-5-haiku-latest"
-        elif os.environ.get("MOONSHOT_API_KEY"):
-            model = "moonshot:kimi-k2-5"
-        elif os.environ.get("GROQ_API_KEY"):
-            model = "groq:llama-3.3-70b-versatile"
-        elif os.environ.get("OPENROUTER_API_KEY"):
-            model = "openrouter:openai/gpt-4o-mini"
-        elif os.environ.get("GOOGLE_API_KEY"):
-            model = "google:gemini-1.5-flash"
-        else:
-            raise ValueError(
-                "No model specified and no API keys found in environment. "
-                "Please set an API key in your .env file or provide a model."
-            )
+    # If no provider specified, check environment variable
+    if provider is None:
+        provider = os.environ.get("LLM_PROVIDER")
     
-    # If model is provided but doesn't have provider prefix
-    if model and ":" not in model and provider is None:
-        # Check if it's an alias
+    # If no model specified, check environment variable first
+    if model is None:
+        model = os.environ.get("LLM_MODEL")
+    
+    # If still no model specified, try to build from provider or use defaults
+    if model is None:
+        if provider:
+            # Use default model for the specified provider
+            default_model = DEFAULT_MODELS.get(provider)
+            if default_model:
+                model = f"{provider}:{default_model}"
+        else:
+            # Auto-detect from available API keys (fallback)
+            if os.environ.get("OPENAI_API_KEY"):
+                model = "openai:gpt-4o-mini"
+            elif os.environ.get("ANTHROPIC_API_KEY"):
+                model = "anthropic:claude-3-5-haiku-latest"
+            elif os.environ.get("MOONSHOT_API_KEY"):
+                model = "moonshot:kimi-k2-5"
+            elif os.environ.get("GROQ_API_KEY"):
+                model = "groq:llama-3.3-70b-versatile"
+            elif os.environ.get("OPENROUTER_API_KEY"):
+                model = "openrouter:openai/gpt-4o-mini"
+            elif os.environ.get("GOOGLE_API_KEY"):
+                model = "google:gemini-1.5-flash"
+            else:
+                raise ValueError(
+                    "No model specified and no API keys found in environment. "
+                    "Please set LLM_PROVIDER and LLM_MODEL in your .env file, "
+                    "or provide a model explicitly."
+                )
+    
+    # If model has provider prefix (e.g., "openai:gpt-4o"), extract it
+    if model and ":" in model:
+        provider_name, model_name = model.split(":", 1)
+        provider = provider_name  # Update provider from model string
+    elif model:
+        # Model without provider prefix
+        # Check if it's an alias first
         if model in MODEL_ALIASES:
             model = MODEL_ALIASES[model]
+            provider_name, model_name = model.split(":", 1)
+            provider = provider_name
+        elif provider:
+            # Use explicitly specified provider
+            model = f"{provider}:{model}"
+            provider_name, model_name = provider, model
         else:
-            # Try to infer provider
+            # Try to infer provider from model name patterns
             try:
-                provider, model_name = resolve_model_string(model)
-                model = f"{provider}:{model_name}"
-            except ValueError:
-                pass  # Will be handled below
+                provider_name, model_name = resolve_model_string(model)
+                model = f"{provider_name}:{model_name}"
+                provider = provider_name
+            except ValueError as e:
+                raise ValueError(
+                    f"Cannot resolve model '{model}'. "
+                    f"Use format 'provider:model' (e.g., 'openai:gpt-4o'), "
+                    f"a known alias, or set LLM_PROVIDER in your .env file."
+                ) from e
+    else:
+        raise ValueError("No model specified.")
     
-    # If provider is explicitly specified, prepend it
-    if provider and model and ":" not in model:
-        model = f"{provider}:{model}"
-    
-    # Resolve the model string
-    provider_name, model_name = resolve_model_string(model)
+    # Final resolution to ensure we have provider_name and model_name
+    if ":" in model:
+        provider_name, model_name = model.split(":", 1)
+    else:
+        raise ValueError(
+            f"Invalid model format: '{model}'. "
+            f"Use format 'provider:model' (e.g., 'openai:gpt-4o')."
+        )
     
     # Create config and get model
     config = LLMConfig(
         provider=provider_name,
         model=model_name,
         temperature=temperature,
+        rate_limiter=rate_limiter,
+        auto_rate_limiting=auto_rate_limiting,
         **kwargs,
     )
     

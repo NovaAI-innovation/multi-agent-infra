@@ -218,16 +218,17 @@ def run_simple_conversation():
     print("Orchestrator processing...\n")
     
     try:
-        # Run the orchestrator
-        result = orchestrator.invoke(initial_state)
-        
+        # Run the orchestrator with proper configuration for checkpointing
+        config = {"configurable": {"thread_id": session_id}}
+        result = orchestrator.invoke(initial_state, config=config)
+
         # Print results
         print("\n" + "-"*60)
         print("Routing History:")
         print("-"*60)
         for decision in result.get("routing_history", []):
             print(f"  → {decision['target_agent']}: {decision['reason']} (confidence: {decision['confidence']:.2f})")
-        
+
         print("\n" + "-"*60)
         print("Final Messages:")
         print("-"*60)
@@ -235,11 +236,11 @@ def run_simple_conversation():
             msg_type = getattr(msg, 'type', 'unknown')
             content = getattr(msg, 'content', str(msg))[:200]
             print(f"\n[{msg_type}]: {content}...")
-        
+
         print("\n" + "="*60)
         print("Session completed successfully!")
         print("="*60)
-        
+
     except Exception as e:
         print(f"\nError: {e}")
         import traceback
@@ -283,7 +284,8 @@ def demo_different_models():
             initial_state = create_initial_state(session_id=session_id)
             initial_state["messages"] = [HumanMessage(content="Say 'Hello from {provider}!'")]
             
-            result = orchestrator.invoke(initial_state)
+            config = {"configurable": {"thread_id": session_id}}
+            result = orchestrator.invoke(initial_state, config=config)
             print(f"  ✓ {provider} works!")
             
         except Exception as e:
@@ -318,7 +320,7 @@ def demo_with_streaming():
     
     print("\nStreaming updates:\n")
     
-    for update in orchestrator.stream(initial_state, stream_mode="updates"):
+    for update in orchestrator.stream(initial_state, config={"configurable": {"thread_id": session_id}}, stream_mode="updates"):
         for node, data in update.items():
             print(f"[{node}]: {list(data.keys()) if isinstance(data, dict) else 'data'}")
 

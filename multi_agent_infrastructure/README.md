@@ -69,7 +69,9 @@ orchestrator = create_orchestrator(registry, config)
 state = create_initial_state(session_id="session_1")
 state["messages"] = [HumanMessage(content="Research Python web frameworks")]
 
-result = orchestrator.invoke(state)
+# Provide configuration with thread_id for checkpointing
+config = {"configurable": {"thread_id": "session_1"}}
+result = orchestrator.invoke(state, config=config)
 print(result)
 ```
 

@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+i would also like a implement more logging on the orchestrators run when using quickstart

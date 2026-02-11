@@ -6,10 +6,15 @@ Defines the shared state schema used across the orchestrator and all agents.
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Any, Literal, Optional, TypedDict
 from datetime import datetime
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
+
+from multi_agent_infrastructure.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class RoutingDecision(TypedDict):

@@ -22,6 +22,20 @@ from multi_agent_infrastructure.llm_config import (
     list_model_aliases,
     get_provider_info,
 )
+from multi_agent_infrastructure.rate_limiter import (
+    RateLimiterConfig,
+    create_rate_limiter,
+    create_rate_limiter_from_env,
+    get_provider_rate_limiter,
+    get_gemini_rate_limiter,
+)
+from multi_agent_infrastructure.core.logger import (
+    get_logger,
+    setup_logging,
+    log_agent_execution,
+    log_routing_decision,
+    log_state_change,
+)
 
 __all__ = [
     # Core components
@@ -43,6 +57,18 @@ __all__ = [
     "list_available_providers",
     "list_model_aliases",
     "get_provider_info",
+    # Rate Limiting
+    "RateLimiterConfig",
+    "create_rate_limiter",
+    "create_rate_limiter_from_env",
+    "get_provider_rate_limiter",
+    "get_gemini_rate_limiter",
+    # Logging
+    "get_logger",
+    "setup_logging",
+    "log_agent_execution",
+    "log_routing_decision",
+    "log_state_change",
 ]
 
 __version__ = "0.1.0"
